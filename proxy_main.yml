@@ -1,0 +1,36 @@
+name: proxy_main
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - python=3.12
+  - pip:
+      # Core LLM Inference & Frameworks
+      - vllm==0.13.0
+      - transformers==4.57.3
+      - torch==2.9.0
+      - accelerate==1.12.0
+
+      # Evaluation Tools
+      - lm-eval==0.4.9.2
+      - unbabel-comet==2.2.7
+      - sacrebleu==2.5.1
+      - rouge-score==0.1.2
+      - evaluate==0.4.6
+
+      # Data Processing & Analysis
+      - datasets==2.21.0
+      - pandas==2.3.3
+      - numpy<2.0.0
+      - scipy==1.16.3
+
+      # Visualization
+      - matplotlib==3.10.8
+      - seaborn==0.13.2
+      - adjusttext==1.3.0
+
+      # Utilities
+      - tqdm==4.67.1
+      - python-dotenv==1.2.1
+      - pyyaml==6.0.3
