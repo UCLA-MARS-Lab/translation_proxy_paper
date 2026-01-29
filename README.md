@@ -181,11 +181,11 @@ The MT experiment produces a multi-layered results structure:
 If you use this code or the results in your research, please cite our paper:
 
 ```
-@article{YourLastNameYear,
-  title={Translation as a Scalable Proxy for Multilingual Evaluation},
-  author={Authors, List, Full},
-  journal={Journal or Conference Name},
-  year={Year},
-  url={Link to Paper}
+@article{issaka2026translation,
+    title={Translation as a Scalable Proxy for Multilingual Evaluation},
+    author={Issaka, Sheriff and Rosas Gonzalez, Erick and Liu, Lieqi and Agyei, Evans Kofi and Bandarkar, Lucas and Peng, Nanyun and Adelani, David Ifeoluwa and Guzmán, Francisco and Gabriel, Saadia},
+    journal={Preprint},
+    year={2026},
+    url={https://translation-as-multilingual-proxy.github.io/}
 }
 ```
