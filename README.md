@@ -24,7 +24,7 @@ Two separate environments are required to replicate all experiments due to depen
 1.  **Clone the Repository:**
 
     ```bash
-    git clone [https://github.com/YourUsername/YourRepoName.git](https://github.com/YourUsername/YourRepoName.git)
+    git clone https://github.com/UCLA-MARS-Lab/translation_proxy_paper.git
     cd YourRepoName
     ```
 
