@@ -34,3 +34,4 @@ dependencies:
       - tqdm==4.67.1
       - python-dotenv==1.2.1
       - pyyaml==6.0.3
+      - hf_transfer==0.1.9
