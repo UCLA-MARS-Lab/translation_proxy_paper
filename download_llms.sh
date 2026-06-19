@@ -9,8 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Read the HF repo path of every model from models.yaml
-mapfile -t MODELS < <(yq '.models[].path' "${SCRIPT_DIR}/models.yaml")
+mapfile -t MODELS < <(python -c "import yaml; d=yaml.safe_load(open('${SCRIPT_DIR}/models.yaml')); print('\n'.join([m['path'] for m in d['models']]))")
 
 echo "Starting download of ${#MODELS[@]} LLMs..."
 
