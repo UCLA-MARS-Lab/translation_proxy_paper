@@ -1,0 +1,82 @@
+# Single source of truth for every model used in the paper.
+#
+# To add, remove, or change a model, edit ONLY this file — all scripts
+# (translation, evaluation, benchmarking, downloading) read from here.
+#
+# Fields:
+#   name   - short display name; also used as the on-disk results/ directory
+#   path   - Hugging Face repo id to load/download
+#   family - sampling-parameter preset used during translation
+#   tp     - tensor-parallel size (number of GPUs) used to load the model
+models:
+  # Qwen
+  - name: Qwen3-4B
+    path: Qwen/Qwen3-4B
+    family: qwen
+    tp: 2
+  - name: Qwen3-8B
+    path: Qwen/Qwen3-8B
+    family: qwen
+    tp: 2
+  - name: Qwen3-14B
+    path: Qwen/Qwen3-14B
+    family: qwen
+    tp: 2
+  - name: Qwen3-32B
+    path: Qwen/Qwen3-32B
+    family: qwen
+    tp: 2
+  - name: Qwen3-30B-A3B
+    path: Qwen/Qwen3-30B-A3B
+    family: qwen
+    tp: 2
+  - name: Qwen2.5-72B-Instruct
+    path: Qwen/Qwen2.5-72B-Instruct
+    family: qwen
+    tp: 4
+
+  # Gemma
+  - name: Gemma-3-1B-it
+    path: google/gemma-3-1b-it
+    family: gemma
+    tp: 2
+  - name: Gemma-3-4B-it
+    path: google/gemma-3-4b-it
+    family: gemma
+    tp: 2
+  - name: Gemma-3-12B-it
+    path: google/gemma-3-12b-it
+    family: gemma
+    tp: 2
+  - name: Gemma-3-27B-it
+    path: google/gemma-3-27b-it
+    family: gemma
+    tp: 2
+
+  # Llama
+  - name: Llama-3.3-70B-Instruct
+    path: meta-llama/Llama-3.3-70B-Instruct
+    family: llama
+    tp: 4
+
+  # DeepSeek
+  - name: DeepSeek-R1-Distill-Qwen-32B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Llama-70B
+    path: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+    family: deepseek
+    tp: 4
+
+  # Mistral
+  - name: Mistral-Small-24B-Instruct-2501
+    path: mistralai/Mistral-Small-24B-Instruct-2501
+    family: mistral
+    tp: 2
+
+  # Phi
+  - name: Phi-4
+    path: microsoft/phi-4
+    family: phi
+    tp: 2

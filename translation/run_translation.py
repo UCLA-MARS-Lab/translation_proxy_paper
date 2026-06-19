@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 import gc
 import datetime
+import yaml
 from datasets import load_dataset
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
@@ -15,74 +16,12 @@ SOURCE_CODE = "eng"
 SOURCE_FLORES = LANG_MAP[SOURCE_CODE]["flores_code"]
 
 
-# Model List
-MODELS_TO_RUN = [
-    # Qwen Family
-    {"path": "Qwen/Qwen3-4B", "name": "Qwen3-4B", "family": "qwen", "tp": 2},
-    {"path": "Qwen/Qwen3-8B", "name": "Qwen3-8B", "family": "qwen", "tp": 2},
-    {"path": "Qwen/Qwen3-14B", "name": "Qwen3-14B", "family": "qwen", "tp": 2},
-    {"path": "Qwen/Qwen3-32B", "name": "Qwen3-32B", "family": "qwen", "tp": 2},
-    {"path": "Qwen/Qwen3-30B-A3B", "name": "Qwen3-30B-A3B", "family": "qwen", "tp": 2},
-    {
-        "path": "Qwen/Qwen2.5-72B-Instruct",
-        "name": "Qwen2.5-72B-Instruct",
-        "family": "qwen",
-        "tp": 4,
-    },
-    # Gemma Family
-    {
-        "path": "google/gemma-3-1b-it",
-        "name": "Gemma-3-1B-it",
-        "family": "gemma",
-        "tp": 2,
-    },
-    {
-        "path": "google/gemma-3-4b-it",
-        "name": "Gemma-3-4B-it",
-        "family": "gemma",
-        "tp": 2,
-    },
-    {
-        "path": "google/gemma-3-12b-it",
-        "name": "Gemma-3-12B-it",
-        "family": "gemma",
-        "tp": 2,
-    },
-    {
-        "path": "google/gemma-3-27b-it",
-        "name": "Gemma-3-27B-it",
-        "family": "gemma",
-        "tp": 2,
-    },
-    # Llama Family
-    {
-        "path": "meta-llama/Llama-3.3-70B-Instruct",
-        "name": "Llama-3.3-70B-Instruct",
-        "family": "llama",
-        "tp": 4,
-    },
-    # DeepSeek Family
-    {
-        "path": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-        "name": "DeepSeek-R1-Distill-Qwen-32B",
-        "family": "deepseek",
-        "tp": 2,
-    },
-    {
-        "path": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-        "name": "DeepSeek-R1-Distill-Llama-70B",
-        "family": "deepseek",
-        "tp": 4,
-    },
-    # Mistral / Phi
-    {
-        "path": "mistralai/Mistral-Small-24B-Instruct-2501",
-        "name": "Mistral-Small-24B-Instruct-2501",
-        "family": "mistral",
-        "tp": 2,
-    },
-    {"path": "microsoft/phi-4", "name": "phi-4", "family": "phi", "tp": 2},
-]
+# Model List (single source of truth: models.yaml at the repo root)
+_MODELS_YAML = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models.yaml"
+)
+with open(_MODELS_YAML) as f:
+    MODELS_TO_RUN = yaml.safe_load(f)["models"]
 
 
 def log(message):

@@ -1,28 +1,18 @@
 #!/bin/bash
 
-# This script downloads all 14 LLMs used in the paper.
+# This script downloads all LLMs used in the paper.
 # WARNING: This will require a large amount of disk space.
+#
+# The model list is read from models.yaml (single source of truth) via yq.
 
 set -e
 
-MODELS=(
-    "google/gemma-3-1b-it"
-    "google/gemma-3-4b-it"
-    "google/gemma-3-12b-it"
-    "google/gemma-3-27b-it"
-    "Qwen/Qwen3-4B"
-    "Qwen/Qwen3-8B"
-    "Qwen/Qwen3-14B"
-    "Qwen/Qwen3-32B"
-    "Qwen/Qwen3-30B-A3B"
-    "microsoft/phi-4"
-    "Qwen/Qwen2.5-72B"
-    "meta-llama/Llama-3.3-70B-Instruct"
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
-    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Starting download of 14 LLMs..."
+# Read the HF repo path of every model from models.yaml
+mapfile -t MODELS < <(yq '.models[].path' "${SCRIPT_DIR}/models.yaml")
+
+echo "Starting download of ${#MODELS[@]} LLMs..."
 
 for model in "${MODELS[@]}"; do
     echo "Downloading $model"

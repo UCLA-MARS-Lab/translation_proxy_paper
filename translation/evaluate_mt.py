@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 import sacrebleu
 import evaluate
+import yaml
 from comet import download_model, load_from_checkpoint
 import datetime
 import traceback
@@ -11,24 +12,12 @@ from tqdm import tqdm
 import re
 
 
-# Configuration
-MODELS_TO_EVALUATE = {
-    "Qwen3-4B": "Qwen/Qwen3-4B",
-    "Qwen3-8B": "Qwen/Qwen3-8B",
-    "Qwen3-14B": "Qwen/Qwen3-14B",
-    "Qwen3-32B": "Qwen/Qwen3-32B",
-    "Qwen3-30B-A3B": "Qwen/Qwen3-30B-A3B",
-    "Qwen2.5-72B-Instruct": "Qwen/Qwen2.5-72B-Instruct",
-    "Gemma-3-1B-it": "google/gemma-3-1b-it",
-    "Gemma-3-4B-it": "google/gemma-3-4b-it",
-    "Gemma-3-12B-it": "google/gemma-3-12b-it",
-    "Gemma-3-27B-it": "google/gemma-3-27b-it",
-    "Llama-3.3-70B-Instruct": "meta-llama/Llama-3.3-70B-Instruct",
-    "DeepSeek-R1-Distill-Qwen-32B": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-    "DeepSeek-R1-Distill-Llama-70B": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-    "Mistral-Small-24B-Instruct-2501": "mistralai/Mistral-Small-24B-Instruct-2501",
-    "Phi-4": "microsoft/phi-4",
-}
+# Configuration (single source of truth: models.yaml at the repo root)
+_MODELS_YAML = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models.yaml"
+)
+with open(_MODELS_YAML) as f:
+    MODELS_TO_EVALUATE = {m["name"]: m["path"] for m in yaml.safe_load(f)["models"]}
 
 
 DATASET_FOLDERS = ["flores-200", "wmt24", "ntrex"]
