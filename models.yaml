@@ -9,7 +9,209 @@
 #   family - sampling-parameter preset used during translation
 #   tp     - tensor-parallel size (number of GPUs) used to load the model
 models:
+  # Cohere
+  - name: aya-expanse-32b
+    path: CohereLabs/aya-expanse-32b
+    family: cohere
+    tp: 2
+  - name: aya-expanse-8b
+    path: CohereLabs/aya-expanse-8b
+    family: cohere
+    tp: 2
+  - name: tiny-aya-base
+    path: CohereLabs/tiny-aya-base
+    family: cohere
+    tp: 2
+  - name: c4ai-command-r-08-2024
+    path: CohereLabs/c4ai-command-r-08-2024
+    family: cohere
+    tp: 2
+  - name: c4ai-command-r-plus-08-2024
+    path: CohereLabs/c4ai-command-r-plus-08-2024
+    family: cohere
+    tp: 4
+
+  # Deepseek
+  - name: DeepSeek-R1-0528-Qwen3-8B
+    path: deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Llama-70B
+    path: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+    family: deepseek
+    tp: 4
+  - name: DeepSeek-R1-Distill-Llama-8B
+    path: deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Qwen-1.5B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Qwen-14B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Qwen-32B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Qwen-7B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    family: deepseek
+    tp: 2
+
+  # Falcon
+  - name: Falcon3-10B-Instruct
+    path: tiiuae/Falcon3-10B-Instruct
+    family: falcon
+    tp: 2
+  - name: Falcon3-3B-Instruct
+    path: tiiuae/Falcon3-3B-Instruct
+    family: falcon
+    tp: 2
+  - name: Falcon3-7B-Instruct
+    path: tiiuae/Falcon3-7B-Instruct
+    family: falcon
+    tp: 2
+
+  # Gemma
+  - name: gemma-3-12b-it
+    path: google/gemma-3-12b-it
+    family: gemma
+    tp: 2
+  - name: gemma-3-1b-it
+    path: google/gemma-3-1b-it
+    family: gemma
+    tp: 2
+  - name: gemma-3-27b-it
+    path: google/gemma-3-27b-it
+    family: gemma
+    tp: 2
+  - name: gemma-3-4b-it
+    path: google/gemma-3-4b-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-26B-A4B-it
+    path: google/gemma-4-26B-A4B-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-31B-it
+    path: google/gemma-4-31B-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-E2B-it
+    path: google/gemma-4-E2B-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-E4B-it
+    path: google/gemma-4-E4B-it
+    family: gemma
+    tp: 2
+
+  # Granite
+  - name: granite-4.1-30b
+    path: ibm-granite/granite-4.1-30b
+    family: granite
+    tp: 2
+  - name: granite-4.1-3b
+    path: ibm-granite/granite-4.1-3b
+    family: granite
+    tp: 2
+
+  # Kimi
+  - name: Kimi-Linear-48B-A3B-Instruct
+    path: moonshotai/Kimi-Linear-48B-A3B-Instruct
+    family: kimi
+    tp: 2
+  - name: Moonlight-16B-A3B-Instruct
+    path: moonshotai/Moonlight-16B-A3B-Instruct
+    family: kimi
+    tp: 2
+
+  # Llama
+  - name: Llama-3.2-1B-Instruct
+    path: meta-llama/Llama-3.2-1B-Instruct
+    family: llama
+    tp: 2
+  - name: Llama-3.2-3B-Instruct
+    path: meta-llama/Llama-3.2-3B-Instruct
+    family: llama
+    tp: 2
+  - name: Llama-3.3-70B-Instruct
+    path: meta-llama/Llama-3.3-70B-Instruct
+    family: llama
+    tp: 4
+  - name: Llama-4-Maverick-17B-128E-Instruct
+    path: meta-llama/Llama-4-Maverick-17B-128E-Instruct
+    family: llama
+    tp: 2
+  - name: Llama-4-Scout-17B-16E-Instruct
+    path: meta-llama/Llama-4-Scout-17B-16E-Instruct
+    family: llama
+    tp: 2
+
+  # Mistral
+  - name: Ministral-3-14B-Instruct-2512
+    path: mistralai/Ministral-3-14B-Instruct-2512
+    family: mistral
+    tp: 2
+  - name: Ministral-3-3B-Instruct-2512
+    path: mistralai/Ministral-3-3B-Instruct-2512
+    family: mistral
+    tp: 2
+  - name: Ministral-3-8B-Instruct-2512
+    path: mistralai/Ministral-3-8B-Instruct-2512
+    family: mistral
+    tp: 2
+
+  # Olmo
+  - name: Olmo-3-7B-Instruct
+    path: allenai/Olmo-3-7B-Instruct
+    family: olmo
+    tp: 2
+  - name: Olmo-3.1-32B-Instruct
+    path: allenai/Olmo-3.1-32B-Instruct
+    family: olmo
+    tp: 2
+  - name: Olmo-3-1125-32B
+    path: allenai/Olmo-3-1125-32B
+    family: olmo
+    tp: 2
+
+  # Openelm
+  - name: OpenELM-1_1B-Instruct
+    path: apple/OpenELM-1_1B-Instruct
+    family: openelm
+    tp: 2
+  - name: OpenELM-3B-Instruct
+    path: apple/OpenELM-3B-Instruct
+    family: openelm
+    tp: 2
+
+  # Phi
+  - name: phi-4
+    path: microsoft/phi-4
+    family: phi
+    tp: 2
+
   # Qwen
+  - name: Qwen3-1.7B
+    path: Qwen/Qwen3-1.7B
+    family: qwen
+    tp: 2
+  - name: Qwen3-14B
+    path: Qwen/Qwen3-14B
+    family: qwen
+    tp: 2
+  - name: Qwen3-30B-A3B
+    path: Qwen/Qwen3-30B-A3B
+    family: qwen
+    tp: 2
+  - name: Qwen3-32B
+    path: Qwen/Qwen3-32B
+    family: qwen
+    tp: 2
   - name: Qwen3-4B
     path: Qwen/Qwen3-4B
     family: qwen
@@ -18,65 +220,11 @@ models:
     path: Qwen/Qwen3-8B
     family: qwen
     tp: 2
-  - name: Qwen3-14B
-    path: Qwen/Qwen3-14B
+  - name: Qwen3.6-27B
+    path: Qwen/Qwen3.6-27B
     family: qwen
     tp: 2
-  - name: Qwen3-32B
-    path: Qwen/Qwen3-32B
+  - name: Qwen3.6-35B-A3B
+    path: Qwen/Qwen3.6-35B-A3B
     family: qwen
-    tp: 2
-  - name: Qwen3-30B-A3B
-    path: Qwen/Qwen3-30B-A3B
-    family: qwen
-    tp: 2
-  - name: Qwen2.5-72B-Instruct
-    path: Qwen/Qwen2.5-72B-Instruct
-    family: qwen
-    tp: 4
-
-  # Gemma
-  - name: Gemma-3-1B-it
-    path: google/gemma-3-1b-it
-    family: gemma
-    tp: 2
-  - name: Gemma-3-4B-it
-    path: google/gemma-3-4b-it
-    family: gemma
-    tp: 2
-  - name: Gemma-3-12B-it
-    path: google/gemma-3-12b-it
-    family: gemma
-    tp: 2
-  - name: Gemma-3-27B-it
-    path: google/gemma-3-27b-it
-    family: gemma
-    tp: 2
-
-  # Llama
-  - name: Llama-3.3-70B-Instruct
-    path: meta-llama/Llama-3.3-70B-Instruct
-    family: llama
-    tp: 4
-
-  # DeepSeek
-  - name: DeepSeek-R1-Distill-Qwen-32B
-    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
-    family: deepseek
-    tp: 2
-  - name: DeepSeek-R1-Distill-Llama-70B
-    path: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
-    family: deepseek
-    tp: 4
-
-  # Mistral
-  - name: Mistral-Small-24B-Instruct-2501
-    path: mistralai/Mistral-Small-24B-Instruct-2501
-    family: mistral
-    tp: 2
-
-  # Phi
-  - name: Phi-4
-    path: microsoft/phi-4
-    family: phi
     tp: 2
