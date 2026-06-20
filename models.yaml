@@ -114,19 +114,23 @@ models:
     path: ibm-granite/granite-4.1-30b
     family: granite
     tp: 2
+  - name: granite-4.1-8b
+    path: ibm-granite/granite-4.1-8b
+    family: granite
+    tp: 2
   - name: granite-4.1-3b
     path: ibm-granite/granite-4.1-3b
     family: granite
     tp: 2
 
-  # Kimi
+  # Moonshot
   - name: Kimi-Linear-48B-A3B-Instruct
     path: moonshotai/Kimi-Linear-48B-A3B-Instruct
-    family: kimi
+    family: moonshot
     tp: 2
   - name: Moonlight-16B-A3B-Instruct
     path: moonshotai/Moonlight-16B-A3B-Instruct
-    family: kimi
+    family: moonshot
     tp: 2
 
   # Llama
