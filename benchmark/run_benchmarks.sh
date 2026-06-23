@@ -1,7 +1,5 @@
-
 #!/bin/bash
 
-# Check if GPUs were passed as an argument
 if [ -z "$1" ]; then
     echo "Error: No GPUs specified."
     echo "Usage: $0 <gpu_ids> (e.g., $0 0,1,2,3)"
@@ -34,9 +32,9 @@ INCLUDE="include_base_44_albanian,include_base_44_arabic,include_base_44_armenia
 # Combine into one giant task list
 ALL_TASKS="${AFRI_MMLU},${AFRI_XNLI},${BELEBELE},${GLOBAL_MMLU},${HELLA_SWAG},${TRUTHFUL_QA},${MGSM},${MLQA},${INCLUDE}"
 
-# Read "name|path" for every model from models.yaml (single source of truth).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-mapfile -t MODELS < <(yq '.models[] | .name + "|" + .path' "${SCRIPT_DIR}/../models.yaml")
+mapfile -t MODELS < <(python -c "import yaml; d=yaml.safe_load(open('${SCRIPT_DIR}/../models.yaml')); print('\n'.join([m['path'] for m in d['models']]))")
+
 
 echo "Starting Evaluation..."
 
