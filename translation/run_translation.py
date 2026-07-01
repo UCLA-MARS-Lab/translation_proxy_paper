@@ -16,8 +16,12 @@ SOURCE_CODE = "eng"
 SOURCE_FLORES = LANG_MAP[SOURCE_CODE]["flores_code"]
 
 # Fixed RNG seed for every sampling call so translation runs are reproducible.
-# vLLM ignores it for greedy (temperature=0.0) decoding, where it is a no-op.
 SEED = 42
+
+# Smallest recommended temperature in our set (Ministral-3). Used for models
+# whose developers publish no sampling recommendation: instead of exact greedy
+# (temperature 0.0) we sample at this minimum non-zero temperature.
+MIN_TEMPERATURE = 0.1
 
 
 # Model List (single source of truth: models.yaml at the repo root)
@@ -45,19 +49,21 @@ def get_sampling_params(family):
 
       * Where a model's developers publish a recommended sampling
         configuration (model card or generation_config.json), we use it.
-      * Where the developers recommend greedy decoding, or publish no sampling
-        recommendation at all, we default to greedy (deterministic) decoding
-        -- temperature=0.0, which vLLM treats as argmax/greedy. This keeps the
-        no-recommendation models reproducible and avoids importing unofficial
-        third-party numbers.
+      * Where the developers publish no sampling recommendation at all (their
+        generation_config.json carries only token IDs -- verified 2026-07 for
+        every such model, see per-branch URLs), we sample at MIN_TEMPERATURE,
+        the smallest temperature in our recommended set (0.1, from Ministral-3).
+        This keeps every model in the same sampling regime -- near-deterministic
+        but not exact greedy -- and avoids importing unofficial third-party
+        numbers.
 
     Every branch cites its source URL so the choices can be audited and
-    reproduced. All sampling calls pass a fixed SEED for run-to-run
-    reproducibility. Verified 2026-07 against the models in models.yaml.
+    reproduced. All calls pass a fixed SEED for run-to-run reproducibility.
+    Verified 2026-07 against the models in models.yaml.
 
     Families with an OFFICIAL recommendation (we follow it):
         gemma, qwen, deepseek, llama, mistral, phi, cohere, olmo
-    Families that are GREEDY (vendor recommends greedy, or no rec published):
+    Families with NO published recommendation (we use MIN_TEMPERATURE):
         granite, openelm, falcon, moonshot
     """
 
@@ -140,36 +146,41 @@ def get_sampling_params(family):
             seed=SEED,
         )
     elif family == "granite":
-        # IBM Granite 4: IBM recommends greedy decoding for deterministic,
-        # reproducible output; no sampling tuple is published. => greedy.
-        # https://huggingface.co/ibm-granite/granite-4.1-8b
-        # https://www.ibm.com/granite/docs/models/code
-        return SamplingParams(temperature=0.0, max_tokens=1024)
+        # IBM Granite 4: generation_config.json carries only token IDs (no
+        # sampling params); IBM otherwise recommends greedy. No published
+        # sampling tuple => MIN_TEMPERATURE.
+        # https://huggingface.co/ibm-granite/granite-4.1-8b/raw/main/generation_config.json
+        return SamplingParams(temperature=MIN_TEMPERATURE, max_tokens=1024, seed=SEED)
     elif family == "openelm":
-        # Apple OpenELM: no sampling params published (ships greedy). The card's
-        # only generation suggestion is repetition_penalty=1.2. => greedy.
-        # https://huggingface.co/apple/OpenELM-3B-Instruct
+        # Apple OpenELM: generation_config.json carries only token IDs (no
+        # sampling params). The card's one generation suggestion is
+        # repetition_penalty=1.2, which we keep. No sampling tuple =>
+        # MIN_TEMPERATURE.
+        # https://huggingface.co/apple/OpenELM-3B-Instruct/raw/main/generation_config.json
         return SamplingParams(
-            temperature=0.0,
+            temperature=MIN_TEMPERATURE,
             repetition_penalty=1.2,
             max_tokens=1024,
+            seed=SEED,
         )
     elif family == "falcon":
-        # Falcon3 Instruct: TII publishes NO recommended sampling params (the
-        # commonly-quoted temp 0.2 / top_p 0.95 / top_k 50 values come only from
-        # third-party deployment catalogs, not TII). No-recommendation => greedy.
-        # https://huggingface.co/tiiuae/Falcon3-10B-Instruct
-        return SamplingParams(temperature=0.0, max_tokens=1024)
+        # Falcon3 Instruct: generation_config.json carries only token IDs (no
+        # sampling params); TII publishes no recommendation (the commonly-quoted
+        # temp 0.2 / top_p 0.95 / top_k 50 values come only from third-party
+        # deployment catalogs, not TII). No sampling tuple => MIN_TEMPERATURE.
+        # https://huggingface.co/tiiuae/Falcon3-10B-Instruct/raw/main/generation_config.json
+        return SamplingParams(temperature=MIN_TEMPERATURE, max_tokens=1024, seed=SEED)
     elif family == "moonshot":
-        # Kimi-Linear / Moonlight: Moonshot publishes no sampling params in the
-        # model cards or generation_config.json. No-recommendation => greedy.
-        # https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct
-        return SamplingParams(temperature=0.0, max_tokens=1024)
+        # Kimi-Linear / Moonlight: generation_config.json carries only token IDs
+        # (no sampling params); Moonshot publishes no recommendation. No sampling
+        # tuple => MIN_TEMPERATURE.
+        # https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct/raw/main/generation_config.json
+        return SamplingParams(temperature=MIN_TEMPERATURE, max_tokens=1024, seed=SEED)
     else:
-        # Fallback for any family not listed above: greedy, matching the
-        # "no published recommendation => deterministic decoding" rule so the
-        # code never silently samples at an arbitrary temperature.
-        return SamplingParams(temperature=0.0, max_tokens=1024)
+        # Fallback for any family not listed above: MIN_TEMPERATURE, matching the
+        # "no published recommendation => smallest recommended temperature" rule
+        # so the code never silently samples at an arbitrary temperature.
+        return SamplingParams(temperature=MIN_TEMPERATURE, max_tokens=1024, seed=SEED)
 
 
 def translate_batch(llm, tokenizer, sampling_params, target_lang_code, model_name):
