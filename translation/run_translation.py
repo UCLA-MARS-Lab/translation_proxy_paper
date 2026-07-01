@@ -15,6 +15,10 @@ from tqdm import tqdm
 SOURCE_CODE = "eng"
 SOURCE_FLORES = LANG_MAP[SOURCE_CODE]["flores_code"]
 
+# Fixed RNG seed for every sampling call so translation runs are reproducible.
+# vLLM ignores it for greedy (temperature=0.0) decoding, where it is a no-op.
+SEED = 42
+
 
 # Model List (single source of truth: models.yaml at the repo root)
 _MODELS_YAML = os.path.join(
@@ -33,45 +37,139 @@ def log(message):
 
 def get_sampling_params(family):
     """
-    Returns the EXACT sampling parameters you provided.
+    Returns the decoding parameters used for each model family.
+
+    Methodology (extends the setup of arXiv:2601.11778, which used
+    "model-specific sampling parameters to align with the recommended
+    configuration for each architecture"):
+
+      * Where a model's developers publish a recommended sampling
+        configuration (model card or generation_config.json), we use it.
+      * Where the developers recommend greedy decoding, or publish no sampling
+        recommendation at all, we default to greedy (deterministic) decoding
+        -- temperature=0.0, which vLLM treats as argmax/greedy. This keeps the
+        no-recommendation models reproducible and avoids importing unofficial
+        third-party numbers.
+
+    Every branch cites its source URL so the choices can be audited and
+    reproduced. All sampling calls pass a fixed SEED for run-to-run
+    reproducibility. Verified 2026-07 against the models in models.yaml.
+
+    Families with an OFFICIAL recommendation (we follow it):
+        gemma, qwen, deepseek, llama, mistral, phi, cohere, olmo
+    Families that are GREEDY (vendor recommends greedy, or no rec published):
+        granite, openelm, falcon, moonshot
     """
 
     if family == "gemma":
+        # Gemma 3 / Gemma 4: Google-recommended temp 1.0, top_p 0.95, top_k 64.
+        # https://huggingface.co/google/gemma-3-12b-it/discussions/25
         return SamplingParams(
             temperature=1.0,
             top_k=64,
             top_p=0.95,
             max_tokens=1024,
+            seed=SEED,
         )
     elif family == "qwen":
+        # Qwen3 / Qwen3.6 non-thinking mode (we set enable_thinking=False):
+        # temp 0.7, top_p 0.8, top_k 20, min_p 0. Qwen warns against greedy
+        # decoding. (Qwen3.6 optionally adds presence_penalty 1.5 to curb
+        # repetition; omitted here so Qwen3 and Qwen3.6 share one preset.)
+        # https://huggingface.co/Qwen/Qwen3-8B  (Best Practices)
         return SamplingParams(
             temperature=0.7,
             top_p=0.8,
             top_k=20,
             max_tokens=1024,
+            seed=SEED,
         )
     elif family == "deepseek":
+        # DeepSeek-R1 (and its Distill variants): temp 0.5-0.7 (0.6 recommended),
+        # top_p 0.95. https://huggingface.co/deepseek-ai/DeepSeek-R1  (Usage
+        # Recommendations)
         return SamplingParams(
             temperature=0.6,
             top_p=0.95,
             max_tokens=1024,
+            seed=SEED,
         )
     elif family == "llama":
-        return SamplingParams(temperature=0.6, top_p=0.9, max_tokens=1024)
+        # Llama 3.x / Llama 4: generation_config.json ships temp 0.6, top_p 0.9
+        # (no top_k). Llama 4 uses the same values.
+        # https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct/blob/main/generation_config.json
+        return SamplingParams(temperature=0.6, top_p=0.9, max_tokens=1024, seed=SEED)
     elif family == "mistral":
-        return SamplingParams(temperature=0.15, max_tokens=1024)
+        # Ministral-3-*-Instruct-2512: card recommends a temperature *below 0.1*
+        # for daily-driver / production use; no top_p specified. (The original
+        # paper listed Mistral at 0.15 for an older Mistral model; models.yaml
+        # now contains only Ministral-3-2512, so we follow its newer card.)
+        # https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512
+        return SamplingParams(temperature=0.1, max_tokens=1024, seed=SEED)
     elif family == "phi":
+        # phi-4: temp 0.8, top_p 0.95. Commonly-cited Phi-4 default (also used by
+        # Phi-4-reasoning); note phi-4's generation_config.json pins no sampling
+        # params, so this is the reported default rather than a config value.
+        # https://huggingface.co/microsoft/phi-4
         return SamplingParams(
             temperature=0.8,
             top_p=0.95,
             max_tokens=1024,
+            seed=SEED,
         )
-    else:
-        # Fallback
+    elif family == "cohere":
+        # Aya Expanse / Command-R: model-card examples use do_sample=True,
+        # temperature 0.3. Cohere's API default top_p ("p") is 0.75, top_k off.
+        # https://huggingface.co/CohereLabs/aya-expanse-8b
+        # https://docs.cohere.com/docs/advanced-generation-hyperparameters
         return SamplingParams(
-            temperature=0.7,
+            temperature=0.3,
+            top_p=0.75,
+            max_tokens=1024,
+            seed=SEED,
+        )
+    elif family == "olmo":
+        # OLMo 3 Instruct: generation_config.json ships do_sample=True,
+        # temp 0.6, top_p 0.95 (no top_k). The base Olmo-3-1125-32B publishes no
+        # sampling params (defaults greedy); we apply the Instruct preset here.
+        # https://huggingface.co/allenai/Olmo-3-7B-Instruct/blob/main/generation_config.json
+        return SamplingParams(
+            temperature=0.6,
+            top_p=0.95,
+            max_tokens=1024,
+            seed=SEED,
+        )
+    elif family == "granite":
+        # IBM Granite 4: IBM recommends greedy decoding for deterministic,
+        # reproducible output; no sampling tuple is published. => greedy.
+        # https://huggingface.co/ibm-granite/granite-4.1-8b
+        # https://www.ibm.com/granite/docs/models/code
+        return SamplingParams(temperature=0.0, max_tokens=1024)
+    elif family == "openelm":
+        # Apple OpenELM: no sampling params published (ships greedy). The card's
+        # only generation suggestion is repetition_penalty=1.2. => greedy.
+        # https://huggingface.co/apple/OpenELM-3B-Instruct
+        return SamplingParams(
+            temperature=0.0,
+            repetition_penalty=1.2,
             max_tokens=1024,
         )
+    elif family == "falcon":
+        # Falcon3 Instruct: TII publishes NO recommended sampling params (the
+        # commonly-quoted temp 0.2 / top_p 0.95 / top_k 50 values come only from
+        # third-party deployment catalogs, not TII). No-recommendation => greedy.
+        # https://huggingface.co/tiiuae/Falcon3-10B-Instruct
+        return SamplingParams(temperature=0.0, max_tokens=1024)
+    elif family == "moonshot":
+        # Kimi-Linear / Moonlight: Moonshot publishes no sampling params in the
+        # model cards or generation_config.json. No-recommendation => greedy.
+        # https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct
+        return SamplingParams(temperature=0.0, max_tokens=1024)
+    else:
+        # Fallback for any family not listed above: greedy, matching the
+        # "no published recommendation => deterministic decoding" rule so the
+        # code never silently samples at an arbitrary temperature.
+        return SamplingParams(temperature=0.0, max_tokens=1024)
 
 
 def translate_batch(llm, tokenizer, sampling_params, target_lang_code, model_name):
