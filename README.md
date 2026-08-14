@@ -19,23 +19,36 @@ This repository contains code and instructions needed to replicate the experimen
 
 ### Environment Setup
 
-Two separate environments are required to replicate all experiments due to dependency conflicts, particularly with the `MetricX` evaluation framework.
+Three separate environments are required to replicate all experiments due to dependency conflicts between the LLM inference stack (`vllm`), the COMET-based metrics, and the `MetricX` evaluation framework. Only one environment should be active at a time — always `conda deactivate` the current environment before activating the next.
+
+| Environment | YAML | Used for |
+| --- | --- | --- |
+| `proxy_main` | `proxy_main.yml` | LLM evaluation (`lm-eval`) and translation generation (`vllm`). |
+| `proxy_comet` | `proxy_comet.yml` | Standard MT metrics: BLEU, chrF++, ROUGE-L, METEOR, XCOMET, SSA-COMET (`evaluate_mt.py`). |
+| `proxy_metricx` | `proxy_metricx.yml` | MetricX score only (`evaluate_metricx.py`). |
 
 1.  **Clone the Repository:**
 
     ```bash
-    git clone [https://github.com/YourUsername/YourRepoName.git](https://github.com/YourUsername/YourRepoName.git)
+    git clone https://github.com/UCLA-MARS-Lab/translation_proxy_paper.git
     cd YourRepoName
     ```
 
 2.  **Create the Main Environment (`proxy_main`):**
-    This enviornment is used for all LLM evaluation (`lm-eval`), machine translation, and most MT metric calculations (BLEU, xCOMET, etc.).
+    This enviornment is used for all LLM evaluation (`lm-eval`) and machine translation generation with `vllm`.
 
     ```bash
     conda env create -f proxy_main.yml
     ```
 
-3.  **Create the MetricX Environment (`proxy_metricx`):**
+3.  **Create the COMET Metrics Environment (`proxy_comet`):**
+    This environment is used for the standard MT metrics (BLEU, chrF++, ROUGE-L, METEOR, XCOMET, and SSA-COMET). It is kept separate from `proxy_main` because the COMET stack pins `numpy<2.0`, which conflicts with the LLM inference dependencies.
+
+    ```bash
+    conda env create -f proxy_comet.yml
+    ```
+
+4.  **Create the MetricX Environment (`proxy_metricx`):**
     This environment is required **only** for the calculation of the **MetricX** score due to its specific dependencies.
 
     ```bash
@@ -51,6 +64,10 @@ Two separate environments are required to replicate all experiments due to depen
 ## Download Models and Datasets
 
 This is the most storage-intensive step. Activate the main enviornment before you download anything.
+
+```bash
+conda activate proxy_main
+```
 
 We provide scripts to download all required assets from Hugging Face. If you do not have the stoage capabilities, we recommend, downloading the number of models you can, and continuing the experiment from there.
 
@@ -97,11 +114,7 @@ The main entry point for running all benchmarks across all 14 models is the `run
 
 ```bash
 conda activate proxy_main
-
-# Make the script executable
 chmod +x ./benchmarks/run_benchmarks.sh
-
-# Run benchmarks for all 14 models on specific GPUs
 ./benchmarks/run_benchmarks.sh "0,1,2,3"
 ```
 
@@ -121,14 +134,15 @@ python ./benchmarks/parse.py
 
 This experiment is a two-stage process:
 
-1. Generation: Use the 14 LLMs to generate translations for the 3 parallel corpora.
+1. Generation: Use the LLMs to generate translations for the 3 parallel corpora.
 2. Evaluation: Calculate the 7 translation metrics (MetricX, XCOMET, etc.) on the generated translations.
 
 ### 1. Translation Generation
 
-This step uses the provided Python script (e.g., run_translations.py) which leverages vllm for high-throughput inference. The script will iterate through all 14 models and generate translations for all language pairs in the Flores-200, WMT24++, and NTREX datasets
+This step uses the provided Python script (e.g., run_translations.py) which leverages vllm for high-throughput inference. The script will iterate through all 14 models and generate translations for all language pairs in the Flores-200, WMT24++, and NTREX datasets. Run it in the main environment (`vllm` lives here).
 
 ```bash
+conda activate proxy_main
 python ./translation/run_translation.py
 ```
 
@@ -140,15 +154,16 @@ The scripts (e.g., evaluate_mt.py) should be pointed to the translations/ direct
 
 #### A. Standard Metrics (COMET, BLEU, etc.)
 
-Run the evaluation for XCOMET, SSA-COMET, chrF++, METEOR, ROUGE-L, and BLEU in the main environment (mars_lab).
+Run the evaluation for XCOMET, SSA-COMET, chrF++, METEOR, ROUGE-L, and BLEU in the dedicated `proxy_comet` environment. If you were generating translations, deactivate the main environment first.
 
 ```bash
+conda activate proxy_comet
 python ./translation/evaluate_mt.py
 ```
 
 #### B. MetricX Calculation
 
-Deactivate the main environment and activate the dedicated proxy_metricx environment. This script will find the csv files created in the previous step, calculate the missing MetricX score, and update the csv files in place.
+Deactivate the COMET environment and activate the dedicated `proxy_metricx` environment. This script will find the csv files created in the previous step, calculate the missing MetricX score, and update the csv files in place.
 
 ```bash
 conda deactivate
@@ -163,7 +178,7 @@ Following the execution of the experiments, the ./results/ directory will contai
 
 ### 1. Multilingual Benchmark Scores
 
-After running parse.py, you will find standardized CSV files in `./results/parsed/` for each model (e.g., Phi-4.csv).
+After running parse.py, you will find standardized CSV files in ./results/parsed/ for each model (e.g., Phi-4.csv).
 
 - Format: Each file contains a lang_code (ISO 639-3) column followed by columns for each benchmark (afrimmlu, belebele, mgsm, etc.).
 - Consistency: The script automatically handles the mapping of inconsistent codes (e.g., swa → swh) to ensure language-aligned comparisons across different datasets.
@@ -173,7 +188,7 @@ After running parse.py, you will find standardized CSV files in `./results/parse
 The MT experiment produces a multi-layered results structure:
 
 - **Raw Translations**: Located in folders named after the source dataset (e.g., ./flores-200/[model_name]/), containing translation pairs for every language.
-- **Aggregated Metrics**: The evaluate_mt.py script creates a metrics/ directory. For each model, a CSV (e.g., metrics/Phi-4/flores-200.csv) is generated containing scores for BLEU, chrF++, METEOR, ROUGE-L, xCOMET, and SSA-COMET.
+- **Aggregated Metrics**: The evaluate_mt.py script creates a  metrics/ directory. For each model, a CSV (e.g., metrics/Phi-4/flores-200.csv) is generated containing scores for BLEU, chrF++, METEOR, ROUGE-L, xCOMET, and SSA-COMET.
 - **MetricX Integration**: After running the backfill script (evaluate_metricx.py), the metricx column in these CSVs will be updated. Note that the script inverts the raw MetricX error score (calculating 25 - score) so that a higher value indicates better quality, aligning it with the other 6 metrics.
 
 # Citation

@@ -7,22 +7,34 @@ dependencies:
   - python=3.12
   - pip:
       # Core LLM Inference & Frameworks
-      - vllm==0.13.0
-      - transformers==4.57.3
-      - torch==2.9.0
-      - accelerate==1.12.0
-
-      # Evaluation Tools
-      - lm-eval==0.4.9.2
-      - unbabel-comet==2.2.7
-      - sacrebleu==2.5.1
-      - rouge-score==0.1.2
-      - evaluate==0.4.6
+      #
+      # Leonardo's A100 nodes run NVIDIA driver 535 (CUDA 12.2); the default
+      # PyPI vllm ships a CUDA 13 torch stack that cannot initialize on that
+      # driver ("Device string must not be empty"). Use the cu129 vLLM wheel
+      # with a matching cu129 torch, which is driver-compatible via PTX/minor
+      # version compatibility on A100.
+      - vllm @ https://github.com/vllm-project/vllm/releases/download/v0.23.0/vllm-0.23.0+cu129-cp38-abi3-manylinux_2_28_x86_64.whl
+      - --extra-index-url https://download.pytorch.org/whl/cu129
+      - torch==2.11.0+cu129
+      - torchvision==0.26.0+cu129
+      - torchaudio==2.11.0+cu129
+      - cuda-python==12.9.4
+      # vLLM's torch.compile path shells out to ninja at engine startup;
+      # compute nodes have no system ninja/cmake.
+      - ninja
+      - cmake
+      - transformers==5.5.4
+      # 0.4.9.2 is incompatible with transformers 5.x (imports the removed
+      # AutoModelForVision2Seq); 0.4.12 works with transformers 5.5.4.
+      - lm-eval==0.4.12
 
       # Data Processing & Analysis
       - datasets==2.21.0
       - pandas==2.3.3
-      - numpy<2.0.0
+      # numpy<2.0.0 is unresolvable with vllm 0.23.0 (its opencv-python-headless
+      # dependency requires numpy>=2); the numpy<2 constraint only applies to the
+      # COMET stack, which lives in the separate proxy_comet environment.
+      - numpy<2.6.0
       - scipy==1.16.3
 
       # Visualization
@@ -34,3 +46,7 @@ dependencies:
       - tqdm==4.67.1
       - python-dotenv==1.2.1
       - pyyaml==6.0.3
+      - hf_transfer==0.1.9
+      # Moonlight / other custom tokenizers may need slow-tokenizer backends.
+      - sentencepiece
+      - tiktoken

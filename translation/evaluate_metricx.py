@@ -1,30 +1,28 @@
+import argparse
 import os
 import json
 import pandas as pd
 import subprocess
 import tempfile
 import numpy as np
+import yaml
 import re
 
 DATASET_FOLDERS = ["flores-200", "wmt24", "ntrex"]
-METRICS_SAVE_DIR = "./results/metrics"
+# PROXY_RESULTS_DIR points at scratch on the cluster; falls back to ./results.
+RESULTS_DIR = os.environ.get("PROXY_RESULTS_DIR", "./results")
+METRICS_SAVE_DIR = os.path.join(RESULTS_DIR, "metrics")
 
-MODELS_TO_CHECK = {
-    "Qwen3-4B": "Qwen/Qwen3-4B",
-    "Qwen3-8B": "Qwen/Qwen3-8B",
-    "Qwen3-14B": "Qwen/Qwen3-14B",
-    "Qwen3-32B": "Qwen/Qwen3-32B",
-    "Qwen3-30B-A3B": "Qwen/Qwen3-30B-A3B",
-    "Qwen2.5-72B-Instruct": "Qwen/Qwen2.5-72B-Instruct",
-    "Gemma-3-1B-it": "google/gemma-3-1b-it",
-    "Gemma-3-4B-it": "google/gemma-3-4b-it",
-    "Gemma-3-12B-it": "google/gemma-3-12b-it",
-    "Gemma-3-27B-it": "google/gemma-3-27b-it",
-    "Llama-3.3-70B-Instruct": "meta-llama/Llama-3.3-70B-Instruct",
-    "DeepSeek-R1-Distill-Qwen-32B": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-    "DeepSeek-R1-Distill-Llama-70B": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-    "Phi-4": "microsoft/phi-4",
-}
+# Single source of truth: models.yaml at the repo root
+_MODELS_YAML = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models.yaml"
+)
+with open(_MODELS_YAML) as f:
+    MODELS_TO_CHECK = {
+        m["name"]: m["path"]
+        for m in yaml.safe_load(f)["models"]
+        if not m.get("skip", False)
+    }
 
 
 METRICX_MODEL = "google/metricx-24-hybrid-xl-v2p6"
@@ -32,9 +30,11 @@ METRICX_TOKENIZER = "google/mt5-xl"
 METRICX_MAX_LENGTH = 1536
 METRICX_BATCH_SIZE = 1
 
-METRICX_REPO_DIR = "./metricx"
+# Path to the cloned google-research/metricx repo. On the cluster this is set
+# by cluster/env.sh; ./metricx keeps the original single-machine default.
+METRICX_REPO_DIR = os.environ.get("METRICX_REPO_DIR", "./metricx")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# GPU placement is handled by the scheduler (SLURM sets CUDA_VISIBLE_DEVICES).
 
 
 # Helper Functions
@@ -110,16 +110,39 @@ def calculate_metricx_corpus_score(scores):
 # Main Logic
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Backfill MetricX scores into the metrics CSVs produced "
+        "by evaluate_mt.py."
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Backfill only the model with this 'name' from models.yaml "
+        "(default: all models). Safe to parallelize per model.",
+    )
+    args = parser.parse_args()
+
+    if args.model:
+        if args.model not in MODELS_TO_CHECK:
+            raise SystemExit(
+                f"Model '{args.model}' not found (or marked skip) in models.yaml"
+            )
+        MODELS_TO_CHECK = {args.model: MODELS_TO_CHECK[args.model]}
+
     print(f"Starting MetricX Backfill... (Repo: {METRICX_REPO_DIR})")
 
     for ds_folder in DATASET_FOLDERS:
         print(f"\n{'=' * 40}\nDATASET: {ds_folder}\n{'=' * 40}")
-        save_filename = "wmt.csv" if ds_folder == "wmt24" else f"{ds_folder}.csv"
+        # evaluate_mt.py saves each dataset's metrics as <ds_folder>.csv
+        # (e.g. wmt24.csv), so look for exactly that name here.
+        save_filename = f"{ds_folder}.csv"
 
         for model_name in MODELS_TO_CHECK.keys():
             model_metrics_dir = os.path.join(METRICS_SAVE_DIR, model_name)
             metrics_csv_path = os.path.join(model_metrics_dir, save_filename)
-            translations_dir = f"./results/translations/{ds_folder}/{model_name}/"
+            translations_dir = os.path.join(
+                RESULTS_DIR, "translations", ds_folder, model_name
+            )
 
             if not os.path.exists(metrics_csv_path):
                 print(f"  - Metrics file not found for {model_name}. Skipping.")

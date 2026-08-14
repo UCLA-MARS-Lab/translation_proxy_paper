@@ -1,0 +1,366 @@
+# Single source of truth for every model used in the paper.
+#
+# To add, remove, or change a model, edit ONLY this file — all scripts
+# (translation, evaluation, benchmarking, downloading) read from here.
+#
+# Fields:
+#   name   - short display name; also used as the on-disk results/ directory
+#   path   - Hugging Face repo id to load/download
+#   family - sampling-parameter preset used during translation
+#   tp     - tensor-parallel size (number of GPUs) used to load the model.
+#            Tuned for Leonardo boost nodes (4x NVIDIA A100 64GB per node,
+#            bf16 weights ~2GB per 1B params + KV-cache headroom):
+#              <=16B params  -> tp: 1
+#              ~27-48B       -> tp: 2
+#              70B+          -> tp: 4 (full node)
+#   skip   - optional; if true the model is excluded from all runs
+#            (used for models that cannot fit on a single Leonardo node).
+#   trust_remote_code - optional; pass True to vLLM/transformers for repos
+#            with custom model/tokenizer code (e.g. Moonshot Kimi-Linear).
+#   prompt_mode - optional; "chat" (default) uses tokenizer.apply_chat_template;
+#            "completion" uses plain-text prompts for pretrained base models
+#            without a chat template (e.g. tiny-aya-base).
+#   max_model_len - optional; cap vLLM context length for translation and
+#            benchmarks (default 4096). Prevents KV-cache OOM on models whose
+#            native context is 131k+ tokens when only short context is needed.
+#   enforce_eager - optional; disable vLLM CUDA graphs for models that crash
+#            during cudagraph capture (e.g. DeepSeek-V2-Lite-Chat).
+#   bench_tp - optional; tensor-parallel size to use for the lm-eval benchmark
+#            suite only (independent of `tp`, which sizes translation). The
+#            benchmark runs ONE persistent vLLM engine with dp=1 (no ray
+#            data-parallel fan-out), so set bench_tp: 4 to shard a model across
+#            the whole boost node. Used for models that OOM/deadlocked/timed out
+#            on the ray dp path; defaults to `tp` when unset.
+models:
+  # Cohere
+  - name: aya-expanse-32b
+    path: CohereLabs/aya-expanse-32b
+    family: cohere
+    tp: 2
+  - name: aya-expanse-8b
+    path: CohereLabs/aya-expanse-8b
+    family: cohere
+    tp: 1
+  - name: tiny-aya-base
+    path: CohereLabs/tiny-aya-base
+    family: cohere
+    tp: 1
+    # Pretrained base model: official usage is plain completion, not chat.
+    # https://huggingface.co/CohereLabs/tiny-aya-base
+    prompt_mode: completion
+  - name: c4ai-command-r-08-2024
+    path: CohereLabs/c4ai-command-r-08-2024
+    family: cohere
+    tp: 2
+  # ~104B params (~208GB bf16) leaves no KV-cache headroom on a single node.
+  - name: c4ai-command-r-plus-08-2024
+    path: CohereLabs/c4ai-command-r-plus-08-2024
+    family: cohere
+    tp: 4
+    skip: true
+
+  # Deepseek
+  - name: DeepSeek-R1-0528-Qwen3-8B
+    path: deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+    family: deepseek
+    tp: 1
+  # CUDA OOM during vLLM torch.compile on a single Leonardo node.
+  - name: DeepSeek-R1-Distill-Llama-70B
+    path: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+    family: deepseek
+    tp: 4
+    max_model_len: 4096
+    skip: true
+  - name: DeepSeek-R1-Distill-Llama-8B
+    path: deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+    family: deepseek
+    tp: 1
+  - name: DeepSeek-R1-Distill-Qwen-1.5B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+    family: deepseek
+    tp: 1
+  - name: DeepSeek-R1-Distill-Qwen-14B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+    family: deepseek
+    tp: 1
+  - name: DeepSeek-R1-Distill-Qwen-32B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    family: deepseek
+    tp: 2
+  - name: DeepSeek-R1-Distill-Qwen-7B
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    family: deepseek
+    tp: 1
+  # DeepSeek-V2-Lite-Chat replaced: its MLA attention forces a FlashInfer JIT
+  # RoPE kernel compile (ninja/nvcc) at load time, which fails on Leonardo's
+  # offline compute nodes (exit 127). deepseek-llm-7b-chat is dense with
+  # standard attention, so it loads cleanly with no JIT step.
+  - name: deepseek-llm-7b-chat
+    path: deepseek-ai/deepseek-llm-7b-chat
+    family: deepseek
+    tp: 1
+    bench_tp: 4
+
+  # Falcon
+  - name: Falcon3-10B-Instruct
+    path: tiiuae/Falcon3-10B-Instruct
+    family: falcon
+    tp: 1
+    bench_tp: 4
+  - name: Falcon3-3B-Instruct
+    path: tiiuae/Falcon3-3B-Instruct
+    family: falcon
+    tp: 1
+    bench_tp: 4
+  - name: Falcon3-7B-Instruct
+    path: tiiuae/Falcon3-7B-Instruct
+    family: falcon
+    tp: 1
+    bench_tp: 4
+
+  # Gemma
+  - name: gemma-3-12b-it
+    path: google/gemma-3-12b-it
+    family: gemma
+    tp: 1
+  - name: gemma-3-1b-it
+    path: google/gemma-3-1b-it
+    family: gemma
+    tp: 1
+  - name: gemma-3-27b-it
+    path: google/gemma-3-27b-it
+    family: gemma
+    tp: 2
+  - name: gemma-3-4b-it
+    path: google/gemma-3-4b-it
+    family: gemma
+    tp: 1
+  - name: gemma-4-26B-A4B-it
+    path: google/gemma-4-26B-A4B-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-31B-it
+    path: google/gemma-4-31B-it
+    family: gemma
+    tp: 2
+  - name: gemma-4-E2B-it
+    path: google/gemma-4-E2B-it
+    family: gemma
+    tp: 1
+  - name: gemma-4-E4B-it
+    path: google/gemma-4-E4B-it
+    family: gemma
+    tp: 1
+    max_model_len: 4096
+
+  # Granite
+  - name: granite-4.1-30b
+    path: ibm-granite/granite-4.1-30b
+    family: granite
+    tp: 2
+    bench_tp: 4
+  - name: granite-4.1-8b
+    path: ibm-granite/granite-4.1-8b
+    family: granite
+    tp: 1
+  - name: granite-4.1-3b
+    path: ibm-granite/granite-4.1-3b
+    family: granite
+    tp: 1
+    bench_tp: 4
+
+  # Moonshot
+  # CUDA OOM / engine-init failure on a single Leonardo node.
+  - name: Kimi-Linear-48B-A3B-Instruct
+    path: moonshotai/Kimi-Linear-48B-A3B-Instruct
+    family: moonshot
+    tp: 2
+    trust_remote_code: true
+    max_model_len: 4096
+    skip: true
+  # vLLM tokenizer backend unsupported (even with use_fast=False).
+  - name: Moonlight-16B-A3B-Instruct
+    path: moonshotai/Moonlight-16B-A3B-Instruct
+    family: moonshot
+    tp: 1
+    trust_remote_code: true
+    skip: true
+
+  # Llama
+  - name: Llama-3.2-1B-Instruct
+    path: meta-llama/Llama-3.2-1B-Instruct
+    family: llama
+    tp: 1
+  - name: Llama-3.2-3B-Instruct
+    path: meta-llama/Llama-3.2-3B-Instruct
+    family: llama
+    tp: 1
+  - name: Llama-3.1-8B-Instruct
+    path: meta-llama/Llama-3.1-8B-Instruct
+    family: llama
+    tp: 1
+  # CUDA OOM during vLLM torch.compile on a single Leonardo node.
+  - name: Llama-3.3-70B-Instruct
+    path: meta-llama/Llama-3.3-70B-Instruct
+    family: llama
+    tp: 4
+    max_model_len: 4096
+    skip: true
+  # Maverick (~400B total params, ~800GB bf16) cannot fit on a single Leonardo
+  # node (4x A100 64GB = 256GB); excluded from all runs.
+  - name: Llama-4-Maverick-17B-128E-Instruct
+    path: meta-llama/Llama-4-Maverick-17B-128E-Instruct
+    family: llama
+    tp: 4
+    skip: true
+  # Scout (~109B total params, ~218GB bf16) cannot fit on a single Leonardo node.
+  - name: Llama-4-Scout-17B-16E-Instruct
+    path: meta-llama/Llama-4-Scout-17B-16E-Instruct
+    family: llama
+    tp: 4
+    skip: true
+
+  # Mistral
+  - name: Ministral-3-14B-Instruct-2512
+    path: mistralai/Ministral-3-14B-Instruct-2512
+    family: mistral
+    tp: 1
+    max_model_len: 4096
+  - name: Ministral-3-3B-Instruct-2512
+    path: mistralai/Ministral-3-3B-Instruct-2512
+    family: mistral
+    tp: 1
+  - name: Ministral-3-8B-Instruct-2512
+    path: mistralai/Ministral-3-8B-Instruct-2512
+    family: mistral
+    tp: 1
+  - name: Mistral-7B-Instruct-v0.3
+    path: mistralai/Mistral-7B-Instruct-v0.3
+    family: mistral
+    tp: 1
+    bench_tp: 4
+  - name: Mistral-Nemo-Instruct-2407
+    path: mistralai/Mistral-Nemo-Instruct-2407
+    family: mistral
+    tp: 1
+  # tp=2 left ~-0.26 GiB for the KV cache (weights fill the 2 GPUs at
+  # gpu_memory_utilization=0.70 -> "No available memory for the cache blocks").
+  # bench_tp=4 halves per-GPU weight footprint and restores KV headroom.
+  - name: Mixtral-8x7B-Instruct-v0.1
+    path: mistralai/Mixtral-8x7B-Instruct-v0.1
+    family: mistral
+    tp: 2
+    bench_tp: 4
+
+  # Olmo
+  - name: Olmo-3-7B-Instruct
+    path: allenai/Olmo-3-7B-Instruct
+    family: olmo
+    tp: 1
+    bench_tp: 4
+  - name: Olmo-3.1-32B-Instruct
+    path: allenai/Olmo-3.1-32B-Instruct
+    family: olmo
+    tp: 2
+    bench_tp: 4
+    max_model_len: 4096
+  - name: Olmo-3-1125-32B
+    path: allenai/Olmo-3-1125-32B
+    family: olmo
+    tp: 2
+    bench_tp: 4
+    max_model_len: 4096
+    prompt_mode: completion
+
+  # Openelm
+  # vLLM tokenizer backend unsupported (even with use_fast=False).
+  - name: OpenELM-1_1B-Instruct
+    path: apple/OpenELM-1_1B-Instruct
+    family: openelm
+    tp: 1
+    skip: true
+  - name: OpenELM-3B-Instruct
+    path: apple/OpenELM-3B-Instruct
+    family: openelm
+    tp: 1
+    skip: true
+
+  # Yi
+  - name: Yi-1.5-9B-Chat
+    path: 01-ai/Yi-1.5-9B-Chat
+    family: yi
+    tp: 1
+    bench_tp: 4
+  - name: Yi-1.5-34B-Chat
+    path: 01-ai/Yi-1.5-34B-Chat
+    family: yi
+    tp: 2
+    bench_tp: 4
+    # Translation died with EngineDeadError mid-generation at tp=2; disabling
+    # CUDA graphs stabilizes the vLLM V1 engine.
+    enforce_eager: true
+
+  # InternLM
+  - name: internlm2_5-7b-chat
+    path: internlm/internlm2_5-7b-chat
+    family: internlm
+    tp: 1
+    bench_tp: 4
+    trust_remote_code: true
+  - name: internlm2_5-20b-chat
+    path: internlm/internlm2_5-20b-chat
+    family: internlm
+    tp: 1
+    bench_tp: 4
+    trust_remote_code: true
+
+  # GLM
+  - name: glm-4-9b-chat
+    path: THUDM/glm-4-9b-chat
+    family: glm
+    tp: 1
+    trust_remote_code: true
+    max_model_len: 4096
+
+  # Phi
+  - name: phi-4
+    path: microsoft/phi-4
+    family: phi
+    tp: 1
+
+  # Qwen
+  - name: Qwen3-1.7B
+    path: Qwen/Qwen3-1.7B
+    family: qwen
+    tp: 1
+  - name: Qwen3-14B
+    path: Qwen/Qwen3-14B
+    family: qwen
+    tp: 1
+  - name: Qwen3-30B-A3B
+    path: Qwen/Qwen3-30B-A3B
+    family: qwen
+    tp: 2
+  # CUDA OOM during vLLM engine init (weights fill all 4 GPUs at tp=4).
+  - name: Qwen3-32B
+    path: Qwen/Qwen3-32B
+    family: qwen
+    tp: 4
+    max_model_len: 4096
+    skip: true
+  - name: Qwen3-4B
+    path: Qwen/Qwen3-4B
+    family: qwen
+    tp: 1
+  - name: Qwen3-8B
+    path: Qwen/Qwen3-8B
+    family: qwen
+    tp: 1
+  - name: Qwen3.6-27B
+    path: Qwen/Qwen3.6-27B
+    family: qwen
+    tp: 2
+  - name: Qwen3.6-35B-A3B
+    path: Qwen/Qwen3.6-35B-A3B
+    family: qwen
+    tp: 2
