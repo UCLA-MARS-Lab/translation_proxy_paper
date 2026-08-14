@@ -6,15 +6,21 @@ import glob
 import yaml
 
 # Configuration
-BASE_INPUT_DIR = "./results/raw/"
-BASE_OUTPUT_DIR = "./results/parsed/"
+# PROXY_RESULTS_DIR points at scratch on the cluster; falls back to ./results.
+_RESULTS_DIR = os.environ.get("PROXY_RESULTS_DIR", "./results")
+BASE_INPUT_DIR = os.path.join(_RESULTS_DIR, "raw")
+BASE_OUTPUT_DIR = os.path.join(_RESULTS_DIR, "parsed")
 
 # Single source of truth: models.yaml at the repo root
 _MODELS_YAML = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models.yaml"
 )
 with open(_MODELS_YAML) as f:
-    MODELS_TO_PARSE = {m["name"]: m["path"] for m in yaml.safe_load(f)["models"]}
+    MODELS_TO_PARSE = {
+        m["name"]: m["path"]
+        for m in yaml.safe_load(f)["models"]
+        if not m.get("skip", False)
+    }
 
 # Normalization Maps
 iroko_bench_unnorm = ["swa", "orm"]
